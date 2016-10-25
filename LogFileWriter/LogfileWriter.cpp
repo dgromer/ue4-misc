@@ -1,5 +1,5 @@
 // Copyright (c) 2016 Daniel Gromer
-// Distributed under the MIT License (license terms are at http ://opensource.org/licenses/MIT)
+// Distributed under the MIT License (license terms are at http://opensource.org/licenses/MIT)
 
 #include "anxpres_02.h"
 #include "LogfileWriter.h"
@@ -29,29 +29,11 @@ void ALogfileWriter::Tick( float DeltaTime )
 	Super::Tick( DeltaTime );
 }
 
-APawn* ALogfileWriter::GetPlayerPawn()
-{
-	// Try to find pawn of first player
-	APawn* Pawn = GetWorld()->GetFirstPlayerController()->GetPawn();
-
-	if (!Pawn)
-	{
-		// If this fails, walk through all instances of APawn (this should be only one in this game)
-		for (TActorIterator<APawn> ActorItr(GetWorld()); ActorItr; ++ActorItr)
-		{
-			Pawn = *ActorItr;
-			break;
-		}
-	}
-
-	return Pawn;
-}
-
-AMarkerHandler * ALogfileWriter::GetMarkerHandler()
+AMarkerHandler* ALogfileWriter::GetMarkerHandler()
 {
 	AMarkerHandler* TempMarkerHandle = nullptr;
 
-	// If this fails, walk through all instances of APawn (this should be only one in this game)
+	// If this fails, return first instance of AMarkerHandler
 	for (TActorIterator<AMarkerHandler> ActorItr(GetWorld()); ActorItr; ++ActorItr)
 	{
 		TempMarkerHandle = *ActorItr;
@@ -78,12 +60,12 @@ int32 ALogfileWriter::GetMarker() const
 	}
 }
 
-void ALogfileWriter::SetDirectory(FString NewDirectory)
+void ALogfileWriter::SetDirectory(const FString &NewDirectory)
 {
 	Directory = NewDirectory;
 }
 
-void ALogfileWriter::SetFileName(FString NewFileName)
+void ALogfileWriter::SetFileName(const FString &NewFileName)
 {
 	FileName = NewFileName;
 }
@@ -95,30 +77,31 @@ void ALogfileWriter::BeginWrite()
 		return;
 	}
 
-	PlayerPawn = GetPlayerPawn();
+	Player = GetWorld()->GetFirstPlayerController();
 
-	if (!PlayerPawn)
+	if (!Player)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Can't find Player Pawn"));
 		return;
 	}
 
 	MarkerHandler = GetMarkerHandler();
 
-	if (!PlayerPawn)
+	if (!MarkerHandler)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Can't find Marker Handler"));
 	}
 
-	FString Path = Directory + "/" + FileName;
-
 	IPlatformFile& File = FPlatformFileManager::Get().GetPlatformFile();
+
+	// Open the text file for writing
+	FString Path = Directory + "/" + FileName;
 	FileHandle = File.OpenWrite(*Path, true);
 
+	// Write first row with column names to file
 	FString Header = "time\tx\ty\tz\tx_roll\ty_pitch\tz_yaw\tmarker\r\n";
-
 	FileHandle->Write((const uint8*)TCHAR_TO_ANSI(*Header), Header.Len());
 
+	// Setup a timer for repeatedly calling WriteLogFileEntry()
 	GetWorld()->GetTimerManager().SetTimer(LogFileTimerHandle, this, &ALogfileWriter::WriteLogFileEntry, 1.f / 20, true);
 
 	IsLogging = true;
@@ -126,13 +109,13 @@ void ALogfileWriter::BeginWrite()
 
 void ALogfileWriter::WriteLogFileEntry()
 {
-	FVector CurrentPosition = PlayerPawn->GetActorLocation();
-	FRotator CurrentRotation = PlayerPawn->GetActorRotation();
+	// Get current position and rotation
+	Player->GetPlayerViewPoint(PlayerPosition, PlayerRotation);
 
 	FString Data = FString::Printf(TEXT("%.04f\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%.03f\t%i\r\n"),
 		GetWorld()->GetTimeSeconds(),
-		CurrentPosition.X, CurrentPosition.Y, CurrentPosition.Z,
-		CurrentRotation.Roll, CurrentRotation.Pitch, CurrentRotation.Yaw,
+		PlayerPosition.X, PlayerPosition.Y, PlayerPosition.Z,
+		PlayerRotation.Roll, PlayerRotation.Pitch, PlayerRotation.Yaw,
 		GetMarker());
 
 	FileHandle->Write((const uint8*)TCHAR_TO_ANSI(*Data), Data.Len());
@@ -146,6 +129,8 @@ void ALogfileWriter::EndWrite()
 	}
 
 	GetWorldTimerManager().ClearTimer(LogFileTimerHandle);
+
+	// Deleting the file handle will close the text file
 	delete FileHandle;
 
 	IsLogging = false;
@@ -153,12 +138,19 @@ void ALogfileWriter::EndWrite()
 
 void ALogfileWriter::MyDebug()
 {
-	for (TActorIterator<APawn> ActorItr(GetWorld()); ActorItr; ++ActorItr)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("The pawn:"));
-		// Same as with the Object Iterator, access the subclass instance with the * or -> operators.
-		APawn *Mesh = *ActorItr;
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *ActorItr->GetName());
-		UE_LOG(LogTemp, Warning, TEXT("%s"), *ActorItr->GetActorLocation().ToString());
-	}
+	FVector position;
+	FRotator rotation;
+
+	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(position, rotation);
+
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *position.ToString());
+
+	//for (TActorIterator<APawn> ActorItr(GetWorld()); ActorItr; ++ActorItr)
+	//{
+	//	UE_LOG(LogTemp, Warning, TEXT("The pawn:"));
+	//	// Same as with the Object Iterator, access the subclass instance with the * or -> operators.
+	//	APawn *Mesh = *ActorItr;
+	//	UE_LOG(LogTemp, Warning, TEXT("%s"), *ActorItr->GetName());
+	//	UE_LOG(LogTemp, Warning, TEXT("%s"), *ActorItr->GetActorLocation().ToString());
+	//}
 }

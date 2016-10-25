@@ -1,5 +1,5 @@
 // Copyright (c) 2016 Daniel Gromer
-// Distributed under the MIT License (license terms are at http ://opensource.org/licenses/MIT)
+// Distributed under the MIT License (license terms are at http://opensource.org/licenses/MIT)
 
 #pragma once
 
@@ -23,10 +23,10 @@ public:
 	virtual void Tick( float DeltaSeconds ) override;
 
 	UFUNCTION(BlueprintCallable, Category = "LogfileWriter")
-	void SetDirectory(FString NewDirectory);
+	void SetDirectory(const FString &NewDirectory);
 
 	UFUNCTION(BlueprintCallable, Category = "LogfileWriter")
-	void SetFileName(FString NewFileName);
+	void SetFileName(const FString &NewFileName);
 
 	// Open a file for writing and set a timer
 	UFUNCTION(BlueprintCallable, Category = "LogfileWriter")
@@ -48,11 +48,10 @@ private:
 	FString FileName;
 	bool IsLogging;
 
-	APawn* PlayerPawn;
+	APlayerController* Player;
+	FVector PlayerPosition;
+	FRotator PlayerRotation;
 	AMarkerHandler* MarkerHandler;
-
-	// Returns a pointer to the pawn of the first player
-	APawn* GetPlayerPawn();
 
 	AMarkerHandler* GetMarkerHandler();
 	int32 GetMarker() const;
