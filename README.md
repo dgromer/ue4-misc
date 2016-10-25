@@ -12,7 +12,7 @@ MarkerHandler is an actor class that plays together with LogFileWriter for stori
 
 ### TeleportToTarget
 
-Teleport the pawn of the first player to the location of the given target.
+Teleport the pawn of the first player to the location of the given target (e.g. [Target Point](https://docs.unrealengine.com/latest/INT/Engine/Actors/TargetPoint/))
 
 ![TeleportToTarget](Blueprints/teleport_to_target.png)
 
